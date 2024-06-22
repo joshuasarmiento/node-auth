@@ -77,11 +77,15 @@ export const login = async (req: Request, res: Response) => {
         expiresIn: JWT_EXPIRES_IN
     });
 
-    res.json({ user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-    }, token });
+    res.json({
+        status: "successfully login", 
+        token,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+        }
+    });
 }
 
 export const getAuthenticatedUser = async (req: Request, res: Response) => {
