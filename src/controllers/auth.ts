@@ -70,7 +70,7 @@ export const login = async (req: Request, res: Response) => {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if(!isPasswordValid) {
-        throw new BadRequestException("Invalid credentials", ErrorCode.INVALID_CREDENTIALS);
+        throw new BadRequestException("Password is incorrect", ErrorCode.INVALID_CREDENTIALS);
     }
 
     const token = jwt.sign({id: user.id}, JWT_SECRET as string, {
