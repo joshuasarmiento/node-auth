@@ -17,9 +17,8 @@ interface JwtPayload {
 
 function isAuthenticatedUser(user: any): user is JwtPayload {
     return user && typeof user.userId === 'number';
-  }
+}
   
-
 export const signup = async (req: Request, res: Response, next: NextFunction) => {
     UserSchema.parse(req.body);
     const { email, password, name } = req.body;
@@ -89,20 +88,20 @@ export const login = async (req: Request, res: Response) => {
 }
 
 export const getAuthenticatedUser = async (req: Request, res: Response) => {
-    if (!isAuthenticatedUser(req.user)) {            
+    if (!isAuthenticatedUser(req.user)) {
         throw new BadRequestException("User authentication information is missing", ErrorCode.INVALID_CREDENTIALS);
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
     if (!user) {
-       throw new NotFoundException("User not found", ErrorCode.USER_NOT_FOUND)
+        throw new NotFoundException("User not found", ErrorCode.USER_NOT_FOUND);
     }
 
-    res.json({ 
-        user: { 
-            id: user.id, 
-            email: user.email, 
-            name: user.name 
-        } 
+    res.json({
+        user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+        },
     });
 };

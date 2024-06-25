@@ -4,10 +4,12 @@ import { PORT } from "./secrets";
 import rootRouter from './routes';
 import { PrismaClient } from '@prisma/client';
 import { errorMiddleware } from './middlewares/error';
-import { UserSchema } from './schema/users';
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // replace with your frontend URL
+    credentials: true,
+}));
 
 app.use(express.json());
 
