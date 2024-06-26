@@ -11,6 +11,7 @@ import { lockAccount, incrementFailedAttempts } from '../middlewares/accountLock
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '../utils/emailService'
+import { emailVerificationTemplate } from '../utils/emailTemplate'
 
 const prisma = new PrismaClient();
 
@@ -47,12 +48,12 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
     });
 
     const verificationUrl = `http://localhost:5173/verify-email?token=${verificationToken}`;
+    const emailBody = emailVerificationTemplate(verificationUrl, name);
     await sendEmail(
         user.email,
         "Verify your email",
-        `Please click this link to verify your email: <a href="${verificationUrl}">${verificationUrl}</a>`
+        emailBody
     );
-
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
       expiresIn: JWT_EXPIRES_IN as string,
