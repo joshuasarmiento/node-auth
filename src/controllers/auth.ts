@@ -8,6 +8,9 @@ import { BadRequestException } from '../exceptions/bad-request';
 import { ErrorCode } from '../exceptions/root';
 import { NotFoundException } from '../exceptions/not-found';
 import { lockAccount, incrementFailedAttempts } from '../middlewares/accountLock';
+import nodemailer from 'nodemailer';
+import { v4 as uuidv4 } from 'uuid';
+import { sendEmail } from '../utils/emailService'
 
 const prisma = new PrismaClient();
 
@@ -20,7 +23,7 @@ interface JwtPayload {
 function isAuthenticatedUser(user: any): user is JwtPayload {
     return user && typeof user.userId === 'number';
 }
-  
+
 export const signup = async (req: Request, res: Response, next: NextFunction) => {
     UserSchema.parse(req.body);
     const { email, password, name } = req.body;
@@ -32,14 +35,24 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    const verificationToken = uuidv4();
 
     const user = await prisma.user.create({
       data: { 
           name,
           email, 
-          password: hashedPassword 
+          password: hashedPassword,
+          verificationToken
       },
     });
+
+    const verificationUrl = `http://localhost:5173/verify-email?token=${verificationToken}`;
+    await sendEmail(
+        user.email,
+        "Verify your email",
+        `Please click this link to verify your email: <a href="${verificationUrl}">${verificationUrl}</a>`
+    );
+
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
       expiresIn: JWT_EXPIRES_IN as string,
@@ -56,6 +69,30 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       }
   });
 };
+
+export const verifyEmail = async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+  
+      const user = await prisma.user.findUnique({ where: { verificationToken: token } });
+  
+      if (!user) {
+        return res.status(400).json({ message: 'Invalid or expired verification token' });
+      }
+  
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { 
+          isVerified: true,
+          verificationToken: null
+        }
+      });
+  
+      res.json({ message: 'Email verified successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Error verifying email', error });
+    }
+  };
 
 export const login = async (req: Request, res: Response) => {
     UserSchema.parse(req.body);
@@ -96,6 +133,11 @@ export const login = async (req: Request, res: Response) => {
 
         throw new BadRequestException("Password is incorrect", ErrorCode.INVALID_CREDENTIALS);
     }
+
+    if (!user.isVerified) {
+        return res.status(400).json({ message: 'Email not verified' });
+    }
+  
     
     // Reset failed attempts and lockout time on successful login
     await prisma.user.update({
@@ -123,6 +165,7 @@ export const login = async (req: Request, res: Response) => {
             id: user.id,
             name: user.name,
             email: user.email,
+            isVerified: user.isVerified
         }
     });
 }
@@ -142,6 +185,7 @@ export const getAuthenticatedUser = async (req: Request, res: Response) => {
             id: user.id,
             email: user.email,
             name: user.name,
+            isVerified: user.isVerified
         },
     });
 };
